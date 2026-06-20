@@ -27,6 +27,20 @@ SNAPSHOT_COLUMNS = [
 ]
 
 
+def filter_markets_to_event_window(
+    markets: pd.DataFrame,
+    start_date: object,
+    end_date: object,
+) -> pd.DataFrame:
+    """Restrict market metadata to inclusive event dates, independent of trading overlap."""
+    event_date = pd.to_datetime(markets["event_date"], errors="coerce").dt.date
+    start = pd.Timestamp(start_date).date()
+    end = pd.Timestamp(end_date).date()
+    if start > end:
+        raise ValueError("event window start_date must not exceed end_date")
+    return markets.loc[event_date.between(start, end)].copy()
+
+
 def build_market_snapshots(
     candles: pd.DataFrame,
     markets: pd.DataFrame,

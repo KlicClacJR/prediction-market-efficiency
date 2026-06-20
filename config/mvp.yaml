@@ -11,8 +11,8 @@ calibration_bins: 10
 bootstrap_iterations: 1000
 random_seed: 20260619
 fetch:
-  start_date: "2023-01-01"
-  end_date: null
+  start_date: "2026-03-01"
+  end_date: "2026-05-31"
   timeout_seconds: 30
   max_retries: 4
   page_size: 1000
@@ -22,4 +22,3 @@ paths:
   processed: data/processed
   figures: reports/figures
   tables: reports/tables
-

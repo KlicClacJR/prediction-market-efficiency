@@ -13,7 +13,11 @@ from pm_efficiency.analysis.fixed_horizon_calibration import run_calibration_fro
 from pm_efficiency.config import ProjectConfig, load_config
 from pm_efficiency.data.clean import clean_raw_run
 from pm_efficiency.data.ingest import fetch_series_history, verify_raw_manifest
-from pm_efficiency.data.snapshots import build_market_snapshots, write_market_snapshots
+from pm_efficiency.data.snapshots import (
+    build_market_snapshots,
+    filter_markets_to_event_window,
+    write_market_snapshots,
+)
 from pm_efficiency.data.validate import (
     validate_candles,
     validate_market_snapshots,
@@ -57,6 +61,8 @@ def build(config: ProjectConfig) -> None:
     markets = pd.read_parquet(root / "markets.parquet")
     outcomes = pd.read_parquet(root / "outcomes.parquet")
     candles = pd.read_parquet(root / "price_history.parquet")
+    pilot_end = config.fetch.end_date or pd.Timestamp.now(tz="UTC").date()
+    markets = filter_markets_to_event_window(markets, config.fetch.start_date, pilot_end)
     forecast = build_fixed_horizon_panel(
         candles,
         markets,

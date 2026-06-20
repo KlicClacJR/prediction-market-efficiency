@@ -59,3 +59,11 @@ def test_fixed_horizon_uses_last_quote_at_or_before_target():
     assert len(panel) == 1
     assert panel.iloc[0].timestamp == candles.timestamp.iloc[-1]
     assert panel.iloc[0].outcome == 1
+
+
+def test_features_accept_mixed_datetime_precision():
+    candles, markets, _ = _data()
+    candles["timestamp"] = candles["timestamp"].astype("datetime64[ms, UTC]")
+    markets["close_at"] = markets["close_at"].astype("datetime64[us, UTC]")
+    panel = build_efficiency_panel(candles, markets)
+    assert panel["delta_p_1h"].notna().any()

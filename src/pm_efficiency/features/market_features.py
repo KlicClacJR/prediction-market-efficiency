@@ -16,6 +16,8 @@ def _asof_value(
     direction: str,
     tolerance: pd.Timedelta,
 ) -> np.ndarray:
+    timestamps = pd.to_datetime(timestamps, utc=True).astype("datetime64[ns, UTC]")
+    targets = pd.to_datetime(targets, utc=True).astype("datetime64[ns, UTC]")
     valid = timestamps.notna() & values.notna()
     if not valid.any():
         return np.full(len(targets), np.nan)

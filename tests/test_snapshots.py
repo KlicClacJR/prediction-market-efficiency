@@ -5,6 +5,7 @@ import pandas as pd
 from pm_efficiency.data.snapshots import (
     SNAPSHOT_COLUMNS,
     build_market_snapshots,
+    filter_markets_to_event_window,
     write_market_snapshots,
 )
 from pm_efficiency.data.validate import validate_market_snapshots
@@ -83,3 +84,14 @@ def test_writes_csv_and_hashed_processed_manifest(tmp_path):
     assert manifest["excluded_missing_prices"] == 1
     assert len(manifest["sha256"]) == 64
     assert pd.read_csv(csv_path).columns.tolist() == SNAPSHOT_COLUMNS
+
+
+def test_event_window_excludes_contracts_whose_trading_dates_only_overlap():
+    markets = pd.DataFrame(
+        {
+            "event_date": ["2026-02-28", "2026-03-01", "2026-05-31", "2026-06-01"],
+            "market_id": ["BEFORE", "FIRST", "LAST", "AFTER"],
+        }
+    )
+    filtered = filter_markets_to_event_window(markets, "2026-03-01", "2026-05-31")
+    assert filtered["market_id"].tolist() == ["FIRST", "LAST"]

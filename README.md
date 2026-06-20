@@ -107,6 +107,10 @@ Raw bucket midpoints are the primary forecasts. Since the buckets within a daily
 
 The notebooks cover data auditing, calibration interpretation, and efficiency interpretation. `reports/final_report.md` is the manuscript skeleton and records the claims that require populated evidence.
 
+The completed March–May 2026 validation run is documented in
+[`reports/pilot_calibration_report.md`](reports/pilot_calibration_report.md), including
+sample coverage, exclusions, clustered confidence intervals, and reproducibility details.
+
 ## Limitations
 
 - Temperature buckets inside an event are dependent and should not be treated as independent resolutions.

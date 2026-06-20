@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,10 +12,6 @@ import numpy as np
 import pandas as pd
 
 from pm_efficiency.schemas import MARKET_COLUMNS, OUTCOME_COLUMNS, PRICE_COLUMNS
-
-
-def _utc(value: Any) -> pd.Timestamp:
-    return pd.to_datetime(value, utc=True, errors="coerce")
 
 
 def _number(value: Any) -> float:
@@ -31,21 +26,6 @@ def _number(value: Any) -> float:
 def _nested_number(record: dict[str, Any], group: str, field: str) -> float:
     payload = record.get(group) or {}
     return _number(payload.get(f"{field}_dollars", payload.get(field)))
-
-
-def _event_date(record: dict[str, Any], event_id: str, close_at: pd.Timestamp) -> object:
-    occurrence = _utc(record.get("occurrence_datetime"))
-    if not pd.isna(occurrence):
-        return occurrence.tz_convert("America/New_York").date()
-    match = re.search(r"-(\d{2}[A-Za-z]{3}\d{2})(?:-|$)", event_id)
-    if match:
-        try:
-            return datetime.strptime(match.group(1).upper(), "%y%b%d").date()
-        except ValueError:
-            pass
-    if not pd.isna(close_at):
-        return close_at.tz_convert("America/New_York").date()
-    return pd.NaT
 
 
 def normalize_markets(
@@ -65,13 +45,13 @@ def normalize_markets(
         if not market_id:
             continue
         event_id = record.get("event_ticker", "")
-        close_at = _utc(record.get("close_time") or record.get("expiration_time"))
         rows.append(
             {
                 "source": "kalshi",
                 "series_id": series_id,
                 "event_id": event_id,
-                "event_date": _event_date(record, event_id, close_at),
+                "event_date": pd.NaT,
+                "_occurrence_datetime": record.get("occurrence_datetime"),
                 "market_id": market_id,
                 "title": record.get("title", ""),
                 "subtitle": record.get("subtitle") or record.get("yes_sub_title", ""),
@@ -80,10 +60,10 @@ def normalize_markets(
                 "strike_type": record.get("strike_type"),
                 "floor_strike": _number(record.get("floor_strike")),
                 "cap_strike": _number(record.get("cap_strike")),
-                "created_at": _utc(record.get("created_time")),
-                "open_at": _utc(record.get("open_time")),
-                "close_at": close_at,
-                "resolved_at": _utc(record.get("settlement_ts")),
+                "created_at": record.get("created_time"),
+                "open_at": record.get("open_time"),
+                "close_at": record.get("close_time") or record.get("expiration_time"),
+                "resolved_at": record.get("settlement_ts"),
                 "status": str(record.get("status", "")).lower(),
                 "result": str(record.get("result", "")).lower() or None,
                 "settlement_value": _number(record.get("settlement_value_dollars")),
@@ -91,9 +71,22 @@ def normalize_markets(
                 "retrieved_at": fetched,
             }
         )
-    frame = pd.DataFrame(rows, columns=MARKET_COLUMNS)
+    frame = pd.DataFrame(rows)
     if frame.empty:
-        return frame
+        return pd.DataFrame(columns=MARKET_COLUMNS)
+    for column in ("created_at", "open_at", "close_at", "resolved_at"):
+        frame[column] = pd.to_datetime(frame[column], utc=True, errors="coerce", format="mixed")
+    occurrence_date = (
+        pd.to_datetime(frame.pop("_occurrence_datetime"), utc=True, errors="coerce", format="mixed")
+        .dt.tz_convert("America/New_York")
+        .dt.date
+    )
+    event_token = frame["event_id"].str.extract(r"-(\d{2}[A-Za-z]{3}\d{2})(?:-|$)", expand=False)
+    ticker_date = pd.to_datetime(event_token, format="%y%b%d", errors="coerce").dt.date
+    close_date = frame["close_at"].dt.tz_convert("America/New_York").dt.date
+    combined_event_date = occurrence_date.fillna(ticker_date).fillna(close_date)
+    frame["event_date"] = pd.to_datetime(combined_event_date, errors="coerce").dt.date
+    frame = frame[MARKET_COLUMNS]
     return (
         frame.sort_values(["market_id", "retrieved_at"])
         .drop_duplicates("market_id", keep="last")
@@ -114,10 +107,9 @@ def normalize_candles(
         fetched = fetched.tz_localize("UTC")
     rows = []
     for record in raw_records:
-        timestamp = pd.to_datetime(record.get("end_period_ts"), unit="s", utc=True, errors="coerce")
         row: dict[str, Any] = {
             "market_id": market_id,
-            "timestamp": timestamp,
+            "timestamp": record.get("end_period_ts"),
             "interval_minutes": interval_minutes,
             "volume_interval": _number(record.get("volume_fp", record.get("volume"))),
             "open_interest": _number(record.get("open_interest_fp", record.get("open_interest"))),
@@ -138,6 +130,7 @@ def normalize_candles(
     frame = pd.DataFrame(rows, columns=PRICE_COLUMNS)
     if frame.empty:
         return frame
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"], unit="s", utc=True, errors="coerce")
     return (
         frame.sort_values(["market_id", "timestamp", "retrieved_at"])
         .drop_duplicates(["market_id", "timestamp"], keep="last")
