@@ -42,6 +42,7 @@ def test_market_listing_follows_cursor_pagination():
 def test_ingestion_routes_markets_around_historical_cutoff(tmp_path):
     class FakeClient:
         calls = []
+        ranges = {}
 
         def get_historical_cutoff(self):
             return {"market_settled_ts": "2026-01-15T00:00:00Z"}
@@ -51,8 +52,8 @@ def test_ingestion_routes_markets_around_historical_cutoff(tmp_path):
                 {
                     "ticker": "NEW",
                     "open_time": "2026-01-20T00:00:00Z",
-                    "close_time": "2026-01-21T00:00:00Z",
-                    "settlement_ts": "2026-01-22T00:00:00Z",
+                    "close_time": "2026-02-01T04:59:00Z",
+                    "settlement_ts": "2026-02-01T12:00:00Z",
                 }
             ]
 
@@ -68,6 +69,7 @@ def test_ingestion_routes_markets_around_historical_cutoff(tmp_path):
 
         def get_candlesticks(self, ticker, start, end, interval, **kwargs):
             self.calls.append((ticker, kwargs["historical"]))
+            self.ranges[ticker] = (start, end)
             return []
 
     config = ProjectConfig(
@@ -86,6 +88,7 @@ def test_ingestion_routes_markets_around_historical_cutoff(tmp_path):
     assert (run / "manifest.json").exists()
     verify_raw_manifest(run)
     assert fake.calls == [("OLD", True), ("NEW", False)]
+    assert fake.ranges["NEW"][1].isoformat() == "2026-02-01T04:59:00+00:00"
 
     (run / "markets.json").write_text("tampered")
     try:

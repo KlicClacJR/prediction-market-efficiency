@@ -61,7 +61,10 @@ python scripts/descriptive_summary.py
 # Score 24h/12h/6h/1h forecasts and write the reliability diagram.
 python scripts/calibration_analysis.py
 
-# Produce statistical tables and the reliability figure.
+# Test whether public market features predict paired future revisions.
+python scripts/efficiency_analysis.py
+
+# Produce both calibration and chronological efficiency outputs.
 pm-efficiency analyze
 
 # Reproduce everything downstream from a particular cached raw run.
@@ -89,7 +92,8 @@ The primary implied probability is the midpoint of the closing YES bid and ask i
 - Binary log loss: probabilities clipped to `[1e-6, 1 - 1e-6]`, with clipping disclosed in output methodology.
 - Calibration: fixed-width deciles and expected calibration error (ECE).
 - Uncertainty: complete daily events are resampled in a cluster bootstrap, preserving dependence among mutually exclusive buckets.
-- Efficiency: OLS with event-clustered covariance and expanding-window out-of-sample predictions against a zero-revision benchmark.
+- Efficiency: one date-ordered holdout shared across horizon pairs, with linear and ridge predictions compared against the zero-revision benchmark.
+- Predictive inference: paired circular event-date block bootstraps of model-minus-baseline losses, with all buckets from a day kept together.
 - Multiple tests: Benjamini-Hochberg adjusted p-values.
 
 Fixed-horizon rows use the final quote at or before the target timestamp and reject quotes more than two hours stale. Trailing features are timestamp-aware. Outcomes, post-target candles, and information from later events are never used as predictors.
@@ -101,15 +105,18 @@ Raw bucket midpoints are the primary forecasts. Since the buckets within a daily
 - Calibration metrics and clustered confidence intervals by horizon
 - Reliability bins and diagram
 - Probability-range bias estimates
-- Revision-model coefficients and adjusted p-values
-- Martingale joint tests and Ljung-Box diagnostics
-- Rolling out-of-sample performance versus zero predicted revision
+- `efficiency_metrics.csv`: out-of-sample R², RMSE, MAE, sign accuracy, paired loss comparisons, and adjusted p-values
+- `efficiency_coefficients.csv`: training-sample linear and ridge effects
+- `predicted_vs_actual_revisions.png`: chronological test-set predictions by horizon pair
+- `efficiency_report.md`: conservative interpretation, sample audit, and limitations
 
 The notebooks cover data auditing, calibration interpretation, and efficiency interpretation. `reports/final_report.md` is the manuscript skeleton and records the claims that require populated evidence.
 
 The completed March–May 2026 validation run is documented in
 [`reports/pilot_calibration_report.md`](reports/pilot_calibration_report.md), including
 sample coverage, exclusions, clustered confidence intervals, and reproducibility details.
+Its chronological revision-predictability results are documented in
+[`reports/efficiency_report.md`](reports/efficiency_report.md).
 
 ## Limitations
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -55,4 +56,43 @@ def plot_probability_paths(
     fig, ax = plt.subplots(figsize=(10, 5))
     sns.lineplot(data=data, x="timestamp", y="probability_mid", hue="market_id", ax=ax)
     ax.set(title=f"Market-implied probabilities: {event_id}", ylabel="YES midpoint probability")
+    return _finish(fig, output_path)
+
+
+def plot_predicted_vs_actual_revisions(
+    predictions: pd.DataFrame,
+    *,
+    output_path: str | Path | None = None,
+) -> plt.Figure:
+    """Plot chronological out-of-sample revisions by horizon pair and model."""
+    data = predictions.loc[predictions["model"] != "zero_change_baseline"].copy()
+    pairs = data["pair"].drop_duplicates().tolist()
+    if not pairs:
+        raise ValueError("no fitted-model predictions available for plotting")
+    fig, axes = plt.subplots(1, len(pairs), figsize=(5.2 * len(pairs), 4.8), squeeze=False)
+    for axis, pair in zip(axes[0], pairs, strict=True):
+        subset = data.loc[data["pair"] == pair]
+        sns.scatterplot(
+            data=subset,
+            x="actual_revision",
+            y="predicted_revision",
+            hue="model",
+            alpha=0.55,
+            s=28,
+            ax=axis,
+        )
+        finite = subset[["actual_revision", "predicted_revision"]].to_numpy(dtype=float)
+        bound = float(np.nanmax(np.abs(finite))) if finite.size else 0.1
+        bound = max(bound, 0.01)
+        axis.plot([-bound, bound], [-bound, bound], "--", color="0.35", linewidth=1)
+        axis.axhline(0, color="0.75", linewidth=0.8)
+        axis.axvline(0, color="0.75", linewidth=0.8)
+        axis.set(
+            title=pair.replace("_", " "),
+            xlim=(-bound, bound),
+            ylim=(-bound, bound),
+            xlabel="Actual probability revision",
+            ylabel="Predicted probability revision",
+        )
+    fig.suptitle("Chronological out-of-sample probability revisions", y=1.02)
     return _finish(fig, output_path)

@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from pm_efficiency.analysis.efficiency_study import run_efficiency_analysis
 from pm_efficiency.analysis.fixed_horizon_calibration import run_calibration_from_file
+from pm_efficiency.analysis.paired_efficiency_study import run_paired_efficiency_from_files
 from pm_efficiency.config import ProjectConfig, load_config
 from pm_efficiency.data.clean import clean_raw_run
 from pm_efficiency.data.ingest import fetch_series_history, verify_raw_manifest
@@ -94,7 +94,6 @@ def build(config: ProjectConfig) -> None:
 
 def analyze(config: ProjectConfig) -> None:
     root = Path(config.paths.processed)
-    efficiency = pd.read_parquet(root / "efficiency_panel.parquet")
     run_calibration_from_file(
         root / "market_snapshots.csv",
         metrics_path=Path(config.paths.tables) / "calibration_metrics.csv",
@@ -106,11 +105,27 @@ def analyze(config: ProjectConfig) -> None:
         seed=config.random_seed,
         max_staleness_hours=config.max_staleness_hours,
     )
-    run_efficiency_analysis(
-        efficiency,
-        horizons=config.efficiency_horizons_hours,
+    settings = config.efficiency
+    run_paired_efficiency_from_files(
+        root / "market_snapshots.csv",
+        root / "efficiency_panel.parquet",
+        train_fraction=settings.train_fraction,
         minimum_training_events=config.minimum_training_events,
-        output_dir=config.paths.tables,
+        max_staleness_hours=config.max_staleness_hours,
+        ridge_alpha=settings.ridge_alpha,
+        sign_tolerance=settings.sign_tolerance,
+        block_length_events=settings.block_length_events,
+        bootstrap_iterations=settings.bootstrap_iterations,
+        bucket_min_frequency=settings.bucket_min_frequency,
+        random_forest_min_events=settings.random_forest_min_events,
+        random_forest_min_observations=settings.random_forest_min_observations,
+        random_forest_estimators=settings.random_forest_estimators,
+        seed=config.random_seed,
+        metrics_path=Path(config.paths.tables) / "efficiency_metrics.csv",
+        coefficients_path=Path(config.paths.tables) / "efficiency_coefficients.csv",
+        predictions_path=Path(config.paths.tables) / "efficiency_predictions.csv",
+        figure_path=Path(config.paths.figures) / "predicted_vs_actual_revisions.png",
+        report_path=config.root / "reports" / "efficiency_report.md",
     )
 
 
@@ -118,7 +133,8 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="pm-efficiency")
     parser.add_argument("--config", default="config/mvp.yaml")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    subparsers.add_parser("fetch", help="Fetch a new immutable Kalshi raw run")
+    fetch_parser = subparsers.add_parser("fetch", help="Fetch a new immutable Kalshi raw run")
+    fetch_parser.add_argument("--resume-run")
     clean_parser = subparsers.add_parser("clean", help="Normalize and validate one raw run")
     clean_parser.add_argument("--run-dir")
     subparsers.add_parser("build", help="Build fixed-horizon and efficiency panels")
@@ -129,7 +145,7 @@ def main(argv: list[str] | None = None) -> None:
     config = load_config(args.config)
     config.ensure_output_directories()
     if args.command == "fetch":
-        run = fetch_series_history(config)
+        run = fetch_series_history(config, resume_dir=args.resume_run)
         print(run)
     elif args.command == "clean":
         clean(config, args.run_dir)

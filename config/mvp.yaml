@@ -11,11 +11,23 @@ calibration_bins: 10
 bootstrap_iterations: 1000
 random_seed: 20260619
 fetch:
-  start_date: "2026-03-01"
-  end_date: "2026-05-31"
+  start_date: "2021-01-01"
+  end_date: "2026-06-19"
+  end_buffer_hours: 12
   timeout_seconds: 30
-  max_retries: 4
+  max_retries: 10
   page_size: 1000
+  max_workers: 2
+efficiency:
+  train_fraction: 0.70
+  ridge_alpha: 10.0
+  sign_tolerance: 0.005
+  block_length_events: 7
+  bootstrap_iterations: 2000
+  bucket_min_frequency: 3
+  random_forest_min_events: 100
+  random_forest_min_observations: 1000
+  random_forest_estimators: 300
 paths:
   raw: data/raw
   interim: data/interim

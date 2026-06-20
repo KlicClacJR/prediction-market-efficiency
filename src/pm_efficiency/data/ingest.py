@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime, time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +55,7 @@ def verify_raw_manifest(run_dir: str | Path) -> None:
 def fetch_series_history(
     config: ProjectConfig,
     client: KalshiClient | None = None,
+    resume_dir: str | Path | None = None,
 ) -> Path:
     """Fetch metadata and candles, preserving an immutable timestamped raw run.
 
@@ -62,9 +64,15 @@ def fetch_series_history(
     """
     config.ensure_output_directories()
     retrieved_at = datetime.now(UTC)
-    run_id = retrieved_at.strftime("%Y%m%dT%H%M%S.%fZ")
-    run_dir = Path(config.paths.raw) / "kalshi" / config.series_id / run_id
-    run_dir.mkdir(parents=True, exist_ok=False)
+    if resume_dir is None:
+        run_id = retrieved_at.strftime("%Y%m%dT%H%M%S.%fZ")
+        run_dir = Path(config.paths.raw) / "kalshi" / config.series_id / run_id
+        run_dir.mkdir(parents=True, exist_ok=False)
+    else:
+        run_dir = Path(resume_dir)
+        if (run_dir / "manifest.json").exists():
+            raise ValueError("cannot resume a raw run that already has a manifest")
+        run_dir.mkdir(parents=True, exist_ok=True)
     own_client = client is None
     api = client or KalshiClient(
         timeout=config.fetch.timeout_seconds,
@@ -96,9 +104,11 @@ def fetch_series_history(
         config_start = datetime.combine(config.fetch.start_date, time.min, tzinfo=UTC)
         config_end = (
             datetime.combine(config.fetch.end_date, time.max, tzinfo=UTC)
+            + timedelta(hours=config.fetch.end_buffer_hours)
             if config.fetch.end_date
             else retrieved_at
         )
+        candle_jobs = []
         for market in markets:
             ticker = market["ticker"]
             open_at = _parse_timestamp(market.get("open_time") or market.get("created_time"))
@@ -109,23 +119,39 @@ def fetch_series_history(
             if start >= end:
                 continue
             use_historical = bool(cutoff and settled_at and settled_at < cutoff)
-            candles = api.get_candlesticks(
-                ticker,
-                start,
-                end,
-                config.candle_interval_minutes,
-                series_ticker=config.series_id,
-                historical=use_historical,
-            )
+            candle_jobs.append((ticker, start, end, use_historical))
+
+        def fetch_candles(job: tuple[str, datetime, datetime, bool]) -> dict[str, Any]:
+            ticker, start, end, use_historical = job
             relative = f"candles/{ticker}.json"
-            files.append(
-                {
-                    "path": relative,
-                    "sha256": _write_json(run_dir / relative, candles),
-                    "partition": "historical" if use_historical else "live",
-                    "records": len(candles),
-                }
-            )
+            candle_path = run_dir / relative
+            candles = None
+            if candle_path.is_file():
+                try:
+                    cached = json.loads(candle_path.read_text())
+                    if isinstance(cached, list):
+                        candles = cached
+                except (json.JSONDecodeError, OSError):
+                    pass
+            if candles is None:
+                candles = api.get_candlesticks(
+                    ticker,
+                    start,
+                    end,
+                    config.candle_interval_minutes,
+                    series_ticker=config.series_id,
+                    historical=use_historical,
+                )
+            return {
+                "path": relative,
+                "sha256": _write_json(candle_path, candles),
+                "partition": "historical" if use_historical else "live",
+                "records": len(candles),
+            }
+
+        workers = config.fetch.max_workers if own_client else 1
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            files.extend(executor.map(fetch_candles, candle_jobs))
         manifest = {
             "manifest_version": 1,
             "source": "kalshi",

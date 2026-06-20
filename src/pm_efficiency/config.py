@@ -12,9 +12,11 @@ from pydantic import BaseModel, Field, model_validator
 class FetchConfig(BaseModel):
     start_date: date = date(2023, 1, 1)
     end_date: date | None = None
+    end_buffer_hours: int = Field(default=12, ge=0, le=48)
     timeout_seconds: float = Field(default=30, gt=0)
     max_retries: int = Field(default=4, ge=0)
     page_size: int = Field(default=1000, ge=1, le=1000)
+    max_workers: int = Field(default=8, ge=1, le=16)
 
 
 class PathsConfig(BaseModel):
@@ -32,6 +34,18 @@ class PathsConfig(BaseModel):
         return PathsConfig(**values)
 
 
+class EfficiencyConfig(BaseModel):
+    train_fraction: float = Field(default=0.70, gt=0.5, lt=1)
+    ridge_alpha: float = Field(default=10.0, gt=0)
+    sign_tolerance: float = Field(default=0.005, ge=0, lt=0.5)
+    block_length_events: int = Field(default=7, ge=1)
+    bootstrap_iterations: int = Field(default=2000, ge=100)
+    bucket_min_frequency: int = Field(default=3, ge=1)
+    random_forest_min_events: int = Field(default=100, ge=20)
+    random_forest_min_observations: int = Field(default=1000, ge=100)
+    random_forest_estimators: int = Field(default=300, ge=100)
+
+
 class ProjectConfig(BaseModel):
     project_name: str
     source: str = "kalshi"
@@ -46,6 +60,7 @@ class ProjectConfig(BaseModel):
     bootstrap_iterations: int = 1000
     random_seed: int = 20260619
     fetch: FetchConfig = FetchConfig()
+    efficiency: EfficiencyConfig = EfficiencyConfig()
     paths: PathsConfig = PathsConfig()
     root: Path = Path(".")
 
