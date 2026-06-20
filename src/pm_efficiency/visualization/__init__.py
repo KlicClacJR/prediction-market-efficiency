@@ -1,0 +1,1 @@
+"""Publication-ready research visualizations."""

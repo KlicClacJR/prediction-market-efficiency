@@ -1,0 +1,22 @@
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Keep the directory contract but not fetched or generated datasets.
+data/raw/**
+data/interim/**
+data/processed/**
+data/external/**
+!data/**/.gitkeep
+reports/figures/**
+reports/tables/**
+!reports/figures/.gitkeep
+!reports/tables/.gitkeep
+

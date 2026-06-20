@@ -1,0 +1,9 @@
+{
+  "end_period_ts": 1704067200,
+  "yes_bid": {"open": "0.30", "low": "0.29", "high": "0.34", "close": "0.33"},
+  "yes_ask": {"open": "0.35", "low": "0.34", "high": "0.38", "close": "0.36"},
+  "price": {"open": "0.32", "low": "0.31", "high": "0.36", "close": "0.35", "mean": "0.34", "previous": "0.31"},
+  "volume": "12.00",
+  "open_interest": "99.00"
+}
+

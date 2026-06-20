@@ -1,0 +1,25 @@
+project_name: Prediction Market Efficiency and Bayesian Information Aggregation
+source: kalshi
+series_id: KXHIGHNY
+category: Weather
+candle_interval_minutes: 60
+forecast_horizons_hours: [24, 12, 6, 1]
+efficiency_horizons_hours: [1, 6]
+max_staleness_hours: 2
+minimum_training_events: 60
+calibration_bins: 10
+bootstrap_iterations: 1000
+random_seed: 20260619
+fetch:
+  start_date: "2023-01-01"
+  end_date: null
+  timeout_seconds: 30
+  max_retries: 4
+  page_size: 1000
+paths:
+  raw: data/raw
+  interim: data/interim
+  processed: data/processed
+  figures: reports/figures
+  tables: reports/tables
+
