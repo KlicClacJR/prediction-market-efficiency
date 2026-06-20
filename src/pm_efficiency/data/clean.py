@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -32,6 +33,21 @@ def _nested_number(record: dict[str, Any], group: str, field: str) -> float:
     return _number(payload.get(f"{field}_dollars", payload.get(field)))
 
 
+def _event_date(record: dict[str, Any], event_id: str, close_at: pd.Timestamp) -> object:
+    occurrence = _utc(record.get("occurrence_datetime"))
+    if not pd.isna(occurrence):
+        return occurrence.tz_convert("America/New_York").date()
+    match = re.search(r"-(\d{2}[A-Za-z]{3}\d{2})(?:-|$)", event_id)
+    if match:
+        try:
+            return datetime.strptime(match.group(1).upper(), "%y%b%d").date()
+        except ValueError:
+            pass
+    if not pd.isna(close_at):
+        return close_at.tz_convert("America/New_York").date()
+    return pd.NaT
+
+
 def normalize_markets(
     raw_records: Iterable[dict[str, Any]],
     *,
@@ -48,11 +64,14 @@ def normalize_markets(
         market_id = record.get("ticker")
         if not market_id:
             continue
+        event_id = record.get("event_ticker", "")
+        close_at = _utc(record.get("close_time") or record.get("expiration_time"))
         rows.append(
             {
                 "source": "kalshi",
                 "series_id": series_id,
-                "event_id": record.get("event_ticker", ""),
+                "event_id": event_id,
+                "event_date": _event_date(record, event_id, close_at),
                 "market_id": market_id,
                 "title": record.get("title", ""),
                 "subtitle": record.get("subtitle") or record.get("yes_sub_title", ""),
@@ -63,7 +82,7 @@ def normalize_markets(
                 "cap_strike": _number(record.get("cap_strike")),
                 "created_at": _utc(record.get("created_time")),
                 "open_at": _utc(record.get("open_time")),
-                "close_at": _utc(record.get("close_time") or record.get("expiration_time")),
+                "close_at": close_at,
                 "resolved_at": _utc(record.get("settlement_ts")),
                 "status": str(record.get("status", "")).lower(),
                 "result": str(record.get("result", "")).lower() or None,

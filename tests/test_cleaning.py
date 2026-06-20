@@ -34,6 +34,9 @@ def test_outcomes_keep_exceptional_resolutions_but_mark_them_invalid():
     assert pd.isna(void.outcome) and not bool(void.is_valid_resolution)
     report = validate_outcomes(outcomes)
     assert report.ok and report.warnings
+    assert str(markets.loc[markets.market_id.str.startswith("KX"), "event_date"].iloc[0]) == (
+        "2026-06-19"
+    )
 
 
 def test_crossed_quote_is_rejected():

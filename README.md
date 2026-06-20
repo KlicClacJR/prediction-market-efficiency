@@ -14,9 +14,9 @@ Weather is a useful first laboratory because events repeat frequently, contract 
 
 The main null for efficiency is
 
-\[
+$$
 E[p_{t+h}-p_t\mid\mathcal{F}_t]=0.
-\]
+$$
 
 Rejecting a coefficient test is not, by itself, evidence of a tradable strategy. Spreads, fees, fill uncertainty, dependence, and multiple testing all matter.
 
@@ -55,6 +55,12 @@ pm-efficiency clean
 # Build leakage-safe panels.
 pm-efficiency build
 
+# Write coverage, missingness, distribution, and event probability-sum tables.
+python scripts/descriptive_summary.py
+
+# Score 24h/12h/6h/1h forecasts and write the reliability diagram.
+python scripts/calibration_analysis.py
+
 # Produce statistical tables and the reliability figure.
 pm-efficiency analyze
 
@@ -71,6 +77,9 @@ All defaults are in `config/mvp.yaml`. The raw run manifest records retrieval ti
 - `price_history.parquet`: hourly quotes and trades normalized across Kalshi's current and historical response formats.
 - `forecast_panel.parquet`: one row per market at 24, 12, 6, and 1 hour before close.
 - `efficiency_panel.parquet`: hourly trailing features and one-/six-hour future revisions.
+- `market_snapshots.csv`: resolved `KXHIGHNY` hourly snapshots with the canonical public
+  columns requested for downstream research. Its adjacent manifest records the output hash,
+  source retrieval dates, row counts, and missing-price exclusions.
 
 The primary implied probability is the midpoint of the closing YES bid and ask in an hourly candle. A missing two-sided quote remains missing; it is not silently replaced with a last trade. `liquidity_dollars` is nullable because historical point-in-time liquidity cannot be reconstructed safely from candle data.
 
@@ -122,4 +131,3 @@ This is an academic research project, not investment advice.
 - [Kalshi public market-data quick start](https://docs.kalshi.com/getting_started/quick_start_market_data)
 - [Kalshi historical-data partitioning](https://docs.kalshi.com/getting_started/historical_data)
 - [Kalshi weather settlement overview](https://help.kalshi.com/markets/popular-markets/weather-markets)
-

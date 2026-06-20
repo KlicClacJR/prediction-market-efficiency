@@ -29,15 +29,17 @@ def plot_reliability_diagram(
     data = calibration_bins.loc[calibration_bins["count"] > 0].copy()
     fig, ax = plt.subplots(figsize=(7, 6))
     ax.plot([0, 1], [0, 1], linestyle="--", color="0.45", label="Perfect calibration")
-    sns.lineplot(
-        data=data,
-        x="mean_prediction",
-        y="empirical_rate",
-        hue="forecast_horizon_hours",
-        style=data.get("probability_definition"),
-        marker="o",
-        ax=ax,
-    )
+    lineplot_options = {
+        "data": data,
+        "x": "mean_prediction",
+        "y": "empirical_rate",
+        "hue": "forecast_horizon_hours",
+        "marker": "o",
+        "ax": ax,
+    }
+    if "probability_definition" in data:
+        lineplot_options["style"] = "probability_definition"
+    sns.lineplot(**lineplot_options)
     ax.set(xlim=(0, 1), ylim=(0, 1), xlabel="Mean market probability", ylabel="Observed frequency")
     ax.set_title("Reliability by forecast horizon")
     return _finish(fig, output_path)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +10,7 @@ MARKET_COLUMNS = [
     "source",
     "series_id",
     "event_id",
+    "event_date",
     "market_id",
     "title",
     "subtitle",
@@ -75,6 +76,7 @@ class MarketRecord(CanonicalModel):
     source: str = "kalshi"
     series_id: str
     event_id: str
+    event_date: date | None = None
     market_id: str
     title: str = ""
     subtitle: str = ""

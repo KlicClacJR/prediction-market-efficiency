@@ -8,12 +8,18 @@ from pathlib import Path
 
 import pandas as pd
 
-from pm_efficiency.analysis.calibration_study import run_calibration_analysis
 from pm_efficiency.analysis.efficiency_study import run_efficiency_analysis
+from pm_efficiency.analysis.fixed_horizon_calibration import run_calibration_from_file
 from pm_efficiency.config import ProjectConfig, load_config
 from pm_efficiency.data.clean import clean_raw_run
-from pm_efficiency.data.ingest import fetch_series_history
-from pm_efficiency.data.validate import validate_candles, validate_markets, validate_outcomes
+from pm_efficiency.data.ingest import fetch_series_history, verify_raw_manifest
+from pm_efficiency.data.snapshots import build_market_snapshots, write_market_snapshots
+from pm_efficiency.data.validate import (
+    validate_candles,
+    validate_market_snapshots,
+    validate_markets,
+    validate_outcomes,
+)
 from pm_efficiency.features.market_features import build_efficiency_panel, build_fixed_horizon_panel
 
 
@@ -26,7 +32,9 @@ def _latest_run(config: ProjectConfig) -> Path:
 
 
 def clean(config: ProjectConfig, run_dir: str | Path | None = None) -> None:
-    paths = clean_raw_run(run_dir or _latest_run(config), config.paths.interim)
+    selected_run = Path(run_dir or _latest_run(config))
+    verify_raw_manifest(selected_run)
+    paths = clean_raw_run(selected_run, config.paths.interim)
     markets, outcomes, candles = (pd.read_parquet(path) for path in paths)
     reports = {
         "markets": validate_markets(markets),
@@ -57,26 +65,40 @@ def build(config: ProjectConfig) -> None:
         config.max_staleness_hours,
     )
     efficiency = build_efficiency_panel(candles, markets, config.efficiency_horizons_hours)
+    snapshots = build_market_snapshots(candles, markets, outcomes)
+    snapshot_report = validate_market_snapshots(snapshots)
+    snapshot_report.raise_for_errors()
     target = Path(config.paths.processed)
     target.mkdir(parents=True, exist_ok=True)
     forecast.to_parquet(target / "forecast_panel.parquet", index=False)
     efficiency.to_parquet(target / "efficiency_panel.parquet", index=False)
+    retrieval_dates = (
+        pd.to_datetime(candles["retrieved_at"], utc=True, errors="coerce")
+        .dropna()
+        .dt.date.astype(str)
+        .unique()
+        .tolist()
+    )
+    write_market_snapshots(
+        snapshots,
+        target / "market_snapshots.csv",
+        source_retrieval_dates=retrieval_dates,
+    )
 
 
 def analyze(config: ProjectConfig) -> None:
-    import matplotlib.pyplot as plt
-
-    from pm_efficiency.visualization.plots import plot_reliability_diagram
-
     root = Path(config.paths.processed)
-    forecast = pd.read_parquet(root / "forecast_panel.parquet")
     efficiency = pd.read_parquet(root / "efficiency_panel.parquet")
-    calibration = run_calibration_analysis(
-        forecast,
+    run_calibration_from_file(
+        root / "market_snapshots.csv",
+        metrics_path=Path(config.paths.tables) / "calibration_metrics.csv",
+        deciles_path=Path(config.paths.tables) / "calibration_deciles.csv",
+        figure_path=Path(config.paths.figures) / "reliability_diagram.png",
+        horizons=config.forecast_horizons_hours,
         bins=config.calibration_bins,
         bootstrap_iterations=config.bootstrap_iterations,
         seed=config.random_seed,
-        output_dir=config.paths.tables,
+        max_staleness_hours=config.max_staleness_hours,
     )
     run_efficiency_analysis(
         efficiency,
@@ -84,11 +106,6 @@ def analyze(config: ProjectConfig) -> None:
         minimum_training_events=config.minimum_training_events,
         output_dir=config.paths.tables,
     )
-    figure = plot_reliability_diagram(
-        calibration["calibration_bins"],
-        output_path=Path(config.paths.figures) / "reliability.png",
-    )
-    plt.close(figure)
 
 
 def main(argv: list[str] | None = None) -> None:

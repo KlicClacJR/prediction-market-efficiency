@@ -1,7 +1,7 @@
 import httpx
 
 from pm_efficiency.config import PathsConfig, ProjectConfig
-from pm_efficiency.data.ingest import fetch_series_history
+from pm_efficiency.data.ingest import fetch_series_history, verify_raw_manifest
 from pm_efficiency.data.kalshi import KalshiClient
 
 
@@ -84,4 +84,13 @@ def test_ingestion_routes_markets_around_historical_cutoff(tmp_path):
     fake = FakeClient()
     run = fetch_series_history(config, client=fake)
     assert (run / "manifest.json").exists()
+    verify_raw_manifest(run)
     assert fake.calls == [("OLD", True), ("NEW", False)]
+
+    (run / "markets.json").write_text("tampered")
+    try:
+        verify_raw_manifest(run)
+    except ValueError as exc:
+        assert "hash mismatch: markets.json" in str(exc)
+    else:
+        raise AssertionError("tampered raw data should fail hash verification")

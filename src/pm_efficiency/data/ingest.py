@@ -27,6 +27,30 @@ def _write_json(path: Path, payload: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def sha256_file(path: str | Path) -> str:
+    """Hash a file in chunks so large raw candle files remain cheap to verify."""
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verify_raw_manifest(run_dir: str | Path) -> None:
+    """Raise when a raw file is missing or no longer matches its recorded hash."""
+    root = Path(run_dir)
+    manifest = json.loads((root / "manifest.json").read_text())
+    errors = []
+    for entry in manifest.get("files", []):
+        path = root / entry["path"]
+        if not path.is_file():
+            errors.append(f"missing raw file: {entry['path']}")
+        elif sha256_file(path) != entry["sha256"]:
+            errors.append(f"hash mismatch: {entry['path']}")
+    if errors:
+        raise ValueError("Raw manifest verification failed: " + "; ".join(errors))
+
+
 def fetch_series_history(
     config: ProjectConfig,
     client: KalshiClient | None = None,
@@ -103,9 +127,11 @@ def fetch_series_history(
                 }
             )
         manifest = {
+            "manifest_version": 1,
             "source": "kalshi",
             "series_id": config.series_id,
             "retrieved_at": retrieved_at.isoformat(),
+            "retrieval_date": retrieved_at.date().isoformat(),
             "candle_interval_minutes": config.candle_interval_minutes,
             "market_count": len(markets),
             "files": files,

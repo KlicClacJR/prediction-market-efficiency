@@ -93,3 +93,48 @@ def validate_outcomes(outcomes: pd.DataFrame) -> ValidationReport:
     if invalid_count:
         report.warnings.append(f"{invalid_count} unresolved/exceptional outcomes will be excluded")
     return report
+
+
+def validate_market_snapshots(snapshots: pd.DataFrame) -> ValidationReport:
+    """Validate the public processed snapshot contract before CSV persistence."""
+    report = ValidationReport()
+    required = {
+        "event_id",
+        "contract_id",
+        "event_date",
+        "timestamp",
+        "yes_bid",
+        "yes_ask",
+        "midpoint_probability",
+        "volume",
+        "open_interest",
+        "close_time",
+        "resolution",
+        "resolved_yes",
+        "bucket_label",
+    }
+    if not _required(snapshots, required, report):
+        return report
+    missing_prices = snapshots[["yes_bid", "yes_ask", "midpoint_probability"]].isna().any(axis=1)
+    if missing_prices.any():
+        report.errors.append(f"{int(missing_prices.sum())} snapshots have missing prices")
+    duplicates = snapshots.duplicated(["contract_id", "timestamp"])
+    if duplicates.any():
+        report.errors.append(f"{int(duplicates.sum())} duplicate contract timestamps")
+    for column in ("yes_bid", "yes_ask", "midpoint_probability"):
+        values = snapshots[column].dropna()
+        if not values.between(0, 1).all():
+            report.errors.append(f"{column} lies outside [0, 1]")
+    crossed = snapshots["yes_bid"].notna() & (snapshots["yes_bid"] > snapshots["yes_ask"])
+    if crossed.any():
+        report.errors.append(f"{int(crossed.sum())} snapshots have crossed quotes")
+    labels = snapshots["resolution"].astype("string").str.lower()
+    invalid_labels = ~labels.isin(["yes", "no"])
+    if invalid_labels.any():
+        report.errors.append(f"{int(invalid_labels.sum())} invalid resolution labels")
+    expected_yes = labels.eq("yes")
+    resolved_yes = snapshots["resolved_yes"].astype("boolean")
+    inconsistent = resolved_yes.isna() | resolved_yes.ne(expected_yes)
+    if inconsistent.any():
+        report.errors.append(f"{int(inconsistent.sum())} inconsistent resolved_yes values")
+    return report
