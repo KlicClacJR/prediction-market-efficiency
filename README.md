@@ -67,6 +67,9 @@ python scripts/efficiency_analysis.py
 # Run liquidity, information-arrival, and extreme-weather robustness studies.
 python scripts/conditional_studies.py
 
+# Explain the concentration of information arrival between 12h and 6h.
+python scripts/information_source_analysis.py
+
 # Produce both calibration and chronological efficiency outputs.
 pm-efficiency analyze
 
@@ -124,6 +127,8 @@ results are in [`reports/efficiency_report.md`](reports/efficiency_report.md). C
 results are reported in [`reports/liquidity_report.md`](reports/liquidity_report.md),
 [`reports/information_arrival_report.md`](reports/information_arrival_report.md), and
 [`reports/extreme_weather_report.md`](reports/extreme_weather_report.md).
+The activity, season, temperature-regime, and liquidity mechanism decomposition is in
+[`reports/information_source_report.md`](reports/information_source_report.md).
 
 ## Limitations
 
