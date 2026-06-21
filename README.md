@@ -64,6 +64,9 @@ python scripts/calibration_analysis.py
 # Test whether public market features predict paired future revisions.
 python scripts/efficiency_analysis.py
 
+# Run liquidity, information-arrival, and extreme-weather robustness studies.
+python scripts/conditional_studies.py
+
 # Produce both calibration and chronological efficiency outputs.
 pm-efficiency analyze
 
@@ -115,8 +118,12 @@ The notebooks cover data auditing, calibration interpretation, and efficiency in
 The completed March–May 2026 validation run is documented in
 [`reports/pilot_calibration_report.md`](reports/pilot_calibration_report.md), including
 sample coverage, exclusions, clustered confidence intervals, and reproducibility details.
-Its chronological revision-predictability results are documented in
-[`reports/efficiency_report.md`](reports/efficiency_report.md).
+The maximum-history comparison is documented in
+[`reports/full_history_report.md`](reports/full_history_report.md); current chronological
+results are in [`reports/efficiency_report.md`](reports/efficiency_report.md). Conditional
+results are reported in [`reports/liquidity_report.md`](reports/liquidity_report.md),
+[`reports/information_arrival_report.md`](reports/information_arrival_report.md), and
+[`reports/extreme_weather_report.md`](reports/extreme_weather_report.md).
 
 ## Limitations
 
