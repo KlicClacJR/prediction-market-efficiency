@@ -67,7 +67,7 @@ High-liquidity contracts appear faster at the margins: Q4 assigns more Brier imp
 
 A mechanism is supported only when timing, activity, and revisions align; these results remain descriptive rather than causal. A volume spike can accompany public weather information without proving that trades caused price discovery. Likewise, open interest can fall when positions close even as information arrives.
 
-The combined evidence should be read as locating the market response window. Attributing it to specific forecast releases or observations requires an external, timestamped meteorological-news dataset.
+The combined evidence should be read as locating the market response window. The subsequent [weather-information comparison](weather_information_source_report.md) finds alignment with an assumed ECMWF availability time but no supporting dose response, so attribution remains correlational rather than causal.
 
 ## Limitations
 
@@ -76,3 +76,5 @@ The combined evidence should be read as locating the market response window. Att
 - The balanced sample excludes events without all four usable horizon quotes.
 - Seasonal and liquidity results are multiple descriptive comparisons without a causal treatment design.
 - Absolute-temperature and contract-design regimes remain possible confounders.
+
+The combined decomposition is in [information_source_tables.csv](tables/information_source_tables.csv); figures show [interval dynamics](figures/information_source_dynamics.png) and [conditional shares](figures/information_source_conditions.png).

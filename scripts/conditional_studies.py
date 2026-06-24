@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -19,7 +18,7 @@ from pm_efficiency.analysis.conditional_studies import (
 )
 from pm_efficiency.config import load_config
 
-matplotlib.use("Agg")
+plt.switch_backend("Agg")
 
 
 def save_liquidity(results: dict[str, pd.DataFrame], root: Path) -> None:

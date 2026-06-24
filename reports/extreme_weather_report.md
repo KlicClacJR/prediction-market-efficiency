@@ -39,4 +39,4 @@ Negative OOS R² means the model loses to zero revision. A confidence interval c
 - Extreme status is known only after resolution. Subgroup results diagnose where errors occurred; they do not constitute an ex-ante tradable classifier.
 - Weather regimes may persist longer than the seven-day bootstrap block.
 
-Within these limits, extreme events do not identify a condition where the full-sample calibration or weak-form-efficiency conclusion breaks. The underlying outputs are `extreme_thresholds.csv`, `extreme_calibration_metrics.csv`, `extreme_calibration_tests.csv`, and `extreme_efficiency_metrics.csv`; the figure is `reports/figures/extreme_weather.png`.
+Within these limits, extreme events do not identify a condition where the full-sample calibration or weak-form-efficiency conclusion breaks. The underlying outputs are [extreme_thresholds.csv](tables/extreme_thresholds.csv), [extreme_calibration_metrics.csv](tables/extreme_calibration_metrics.csv), [extreme_calibration_tests.csv](tables/extreme_calibration_tests.csv), and [extreme_efficiency_metrics.csv](tables/extreme_efficiency_metrics.csv); the figure is [extreme_weather.png](figures/extreme_weather.png).

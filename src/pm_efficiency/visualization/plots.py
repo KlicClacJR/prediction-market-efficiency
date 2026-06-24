@@ -1,4 +1,4 @@
-"""Small plotting surface shared by notebooks and CLI analyses."""
+"""Shared plotting helpers for generated research outputs."""
 
 from __future__ import annotations
 
@@ -43,19 +43,6 @@ def plot_reliability_diagram(
     sns.lineplot(**lineplot_options)
     ax.set(xlim=(0, 1), ylim=(0, 1), xlabel="Mean market probability", ylabel="Observed frequency")
     ax.set_title("Reliability by forecast horizon")
-    return _finish(fig, output_path)
-
-
-def plot_probability_paths(
-    candles: pd.DataFrame,
-    event_id: str,
-    *,
-    output_path: str | Path | None = None,
-) -> plt.Figure:
-    data = candles.loc[candles["event_id"] == event_id]
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.lineplot(data=data, x="timestamp", y="probability_mid", hue="market_id", ax=ax)
-    ax.set(title=f"Market-implied probabilities: {event_id}", ylabel="YES midpoint probability")
     return _finish(fig, output_path)
 
 

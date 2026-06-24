@@ -64,8 +64,8 @@ Pilot and full-history OOS metrics are not simple nested estimates. Expanding th
 - The paired block bootstrap averages contracts within event date before resampling, preserving same-day bucket dependence. Seven-day blocks are still only an approximation to weather and market-regime dependence.
 - Midpoints are not executable prices, and no fees, slippage, or fill uncertainty are modeled.
 
-## Conclusion and next checks
+## Conclusion and subsequent evidence
 
 The full-history expansion increases precision and enables the pre-specified random forest, but it does not uncover robust revision predictability. The weak-form-efficiency conclusion remains unchanged in the limited sense supported by this experiment: none of the tested models improves on zero revision out of sample.
 
-Before strengthening that statement, the next analyses should hold the current full-history results fixed and examine pre-specified robustness samples: complete six-bucket events only, exchange/contract-design vintages, seasons, alternate staleness cutoffs, and weekly versus monthly bootstrap blocks. Any apparent predictability should still be described as statistical predictability until it survives executable-price and fee tests.
+Subsequent liquidity, information-arrival, extreme-weather, and external-forecast studies hold these core results fixed. They identify heterogeneity in late-stage calibration and the timing of information arrival, but do not uncover a subgroup in which the tested models beat zero revision. Executable-price and fee analysis remains outside this repository, so no result should be described as tradable alpha.

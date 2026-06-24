@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 
-import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -26,7 +25,7 @@ from pm_efficiency.data.weather_forecasts import (
     verify_weather_manifest,
 )
 
-matplotlib.use("Agg")
+plt.switch_backend("Agg")
 
 
 def main() -> None:

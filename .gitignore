@@ -1,13 +1,27 @@
 .DS_Store
+.AppleDouble
+.LSOverride
 .venv/
+.env
+.env.*
+!.env.example
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
+.coverage.*
 htmlcov/
 *.egg-info/
 .ipynb_checkpoints/
+build/
+dist/
+.idea/
+.vscode/
+*.log
+*.tmp
+*~
 
 # Keep the directory contract but not fetched or generated datasets.
 data/raw/**
@@ -17,6 +31,15 @@ data/external/**
 !data/**/.gitkeep
 reports/figures/**
 reports/tables/**
-!reports/figures/.gitkeep
-!reports/tables/.gitkeep
 
+# Version publication figures and compact research tables. Large row-level outputs
+# (descriptive_summary.csv and efficiency_predictions.csv) remain reproducible but ignored.
+!reports/figures/*.png
+!reports/tables/calibration_*.csv
+!reports/tables/efficiency_metrics.csv
+!reports/tables/efficiency_coefficients.csv
+!reports/tables/extreme_*.csv
+!reports/tables/information_*.csv
+!reports/tables/liquidity_*.csv
+!reports/tables/market_vs_forecast_relationship.csv
+!reports/tables/weather_forecast_revisions.csv

@@ -61,8 +61,8 @@ def build(config: ProjectConfig) -> None:
     markets = pd.read_parquet(root / "markets.parquet")
     outcomes = pd.read_parquet(root / "outcomes.parquet")
     candles = pd.read_parquet(root / "price_history.parquet")
-    pilot_end = config.fetch.end_date or pd.Timestamp.now(tz="UTC").date()
-    markets = filter_markets_to_event_window(markets, config.fetch.start_date, pilot_end)
+    analysis_end = config.fetch.end_date or pd.Timestamp.now(tz="UTC").date()
+    markets = filter_markets_to_event_window(markets, config.fetch.start_date, analysis_end)
     forecast = build_fixed_horizon_panel(
         candles,
         markets,

@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -20,7 +19,7 @@ from pm_efficiency.analysis.information_sources import (
 )
 from pm_efficiency.config import load_config
 
-matplotlib.use("Agg")
+plt.switch_backend("Agg")
 
 
 def main() -> None:

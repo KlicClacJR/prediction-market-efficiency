@@ -67,7 +67,7 @@ class ProjectConfig(BaseModel):
     @model_validator(mode="after")
     def validate_research_parameters(self) -> ProjectConfig:
         if self.source != "kalshi":
-            raise ValueError("The MVP supports source='kalshi' only")
+            raise ValueError("Only source='kalshi' is currently supported")
         if self.candle_interval_minutes not in {1, 60, 1440}:
             raise ValueError("Kalshi candle interval must be 1, 60, or 1440 minutes")
         if not self.forecast_horizons_hours or min(self.forecast_horizons_hours) <= 0:

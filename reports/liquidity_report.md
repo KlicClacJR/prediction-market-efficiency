@@ -35,4 +35,4 @@ This mixed pattern matters. ECE isolates average bin-level probability gaps, whe
 - Equal-sized contract quartiles do not imply equal numbers of independent events; inference therefore clusters by event date.
 - ECE depends on fixed decile bins and probability mix. The proper scoring rules should receive at least equal weight in interpretation.
 
-The underlying tables are `liquidity_calibration_metrics.csv`, `liquidity_comparisons.csv`, and `liquidity_reliability.csv`; the reliability figure is `reports/figures/liquidity_reliability.png`.
+The underlying tables are [liquidity_calibration_metrics.csv](tables/liquidity_calibration_metrics.csv), [liquidity_comparisons.csv](tables/liquidity_comparisons.csv), and [liquidity_reliability.csv](tables/liquidity_reliability.csv); the figure is [liquidity_reliability.png](figures/liquidity_reliability.png).

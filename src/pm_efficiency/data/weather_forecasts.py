@@ -150,25 +150,43 @@ def fetch_weather_archive(
     try:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             run_entries = list(executor.map(fetch_run, unique_runs))
-        start = min(requests.event_date).isoformat()
-        end = max(requests.event_date).isoformat()
         actual_path = root / "noaa_central_park_actuals.json"
-        actuals = _request_json(
-            client,
-            NCEI_URL,
-            {
-                "dataset": "daily-summaries",
-                "stations": CENTRAL_PARK_STATION,
-                "startDate": start,
-                "endDate": end,
-                "format": "json",
-                "units": "standard",
-                "includeAttributes": "false",
-            },
-        )
-        actual_path.write_text(json.dumps(actuals, sort_keys=True))
     finally:
         client.close()
+
+    actuals = None
+    if actual_path.exists():
+        try:
+            cached_actuals = json.loads(actual_path.read_text())
+            if isinstance(cached_actuals, list) and cached_actuals:
+                actuals = cached_actuals
+        except (json.JSONDecodeError, OSError):
+            pass
+    if actuals is None:
+        start = min(requests.event_date).isoformat()
+        end = max(requests.event_date).isoformat()
+        actual_client = httpx.Client(
+            timeout=90,
+            transport=httpx.HTTPTransport(local_address="0.0.0.0"),
+            headers={"User-Agent": "pm-efficiency/0.1 research"},
+        )
+        try:
+            actuals = _request_json(
+                actual_client,
+                NCEI_URL,
+                {
+                    "dataset": "daily-summaries",
+                    "stations": CENTRAL_PARK_STATION,
+                    "startDate": start,
+                    "endDate": end,
+                    "format": "json",
+                    "units": "standard",
+                    "includeAttributes": "false",
+                },
+            )
+        finally:
+            actual_client.close()
+        actual_path.write_text(json.dumps(actuals, sort_keys=True))
 
     files = []
     for entry in run_entries:

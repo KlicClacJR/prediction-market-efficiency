@@ -1,156 +1,180 @@
-# Prediction Market Efficiency and Bayesian Information Aggregation
+# Prediction Market Efficiency and Information Aggregation
 
-This repository studies whether prediction-market prices are calibrated and whether their revisions are predictable. The MVP uses Kalshi's `KXHIGHNY` series: daily contracts on the highest temperature recorded in Central Park.
+An empirical study of Kalshi's `KXHIGHNY` daily New York City high-temperature markets.
+The central question is:
 
-Weather is a useful first laboratory because events repeat frequently, contract language is comparatively stable, and the outcome is resolved against the National Weather Service Daily Climate Report. The project deliberately begins with one series before attempting broader claims about politics, economics, or culture.
+> **Are Kalshi weather prediction-market probabilities calibrated, and are future
+> probability revisions predictable from public market information?**
 
-## Research questions
+The project builds an auditable pipeline from versioned API responses to fixed-horizon
+calibration tests, chronological out-of-sample efficiency models, and mechanism studies.
+It is research software—not a trading system or investment advice.
 
-1. Do market-implied probabilities match observed event frequencies?
-2. How do Brier score, log loss, and calibration change as resolution approaches?
-3. Can public market information predict subsequent probability revisions?
-4. Are midpoint probabilities consistent with a martingale-difference process?
-5. Can category-level Beta priors improve held-out calibration without erasing information in prices?
+## Results at a glance
 
-The main null for efficiency is
+The full-history sample spans **August 2021–June 2026** and contains **1,775 events**,
+**9,040 resolved contracts**, and **219,294 hourly snapshots**.
+
+- Market probabilities are broadly informative: contract-level Brier score falls from
+  **0.136 at 24h** before close to **0.012 at 1h**, although calibration varies by horizon,
+  probability range, and liquidity.
+- Linear regression, ridge regression, and random forest all fail to beat a zero-revision
+  benchmark on the final chronological test period. This is consistent with weak-form
+  efficiency for the tested features; it does not prove that prices are martingales.
+- On the balanced panel, **70.3% of the total 24h→1h Brier-score reduction occurs between
+  12h and 6h** before close. That interval also has the highest trading rate,
+  open-interest growth, and absolute probability revisions.
+- Low-liquidity contracts have weaker late-stage calibration. At 6h and 1h, their Brier
+  scores are roughly 2.6–2.7 times those of the highest-liquidity quartile.
+- Extreme-temperature events do not show a detectable additional calibration penalty or
+  revision predictability under the pre-specified definition.
+- Archived ECMWF updates align with the timing of the market response, but update
+  magnitudes do not explain the 12h→6h concentration. The evidence is correlational, not
+  causal.
+
+![Information arrival across horizons](reports/figures/information_arrival.png)
+
+![Chronological out-of-sample revisions](reports/figures/predicted_vs_actual_revisions.png)
+
+## Research design
+
+### Calibration
+
+For every binary temperature bucket, the pipeline selects the last two-sided quote at or
+before 24h, 12h, 6h, and 1h prior to market close, subject to a two-hour staleness limit.
+It reports Brier score, clipped log loss, fixed-decile reliability, and expected
+calibration error. Confidence intervals resample whole event dates so mutually exclusive
+contracts from the same day remain together.
+
+### Efficiency
+
+The efficiency null is
 
 $$
 E[p_{t+h}-p_t\mid\mathcal{F}_t]=0.
 $$
 
-Rejecting a coefficient test is not, by itself, evidence of a tradable strategy. Spreads, fees, fill uncertainty, dependence, and multiple testing all matter.
+Targets are paired midpoint revisions for 24h→12h, 12h→6h, and 6h→1h. Features include
+the current midpoint, spread, volume, open interest, lagged revisions, volatility,
+trailing volume, bucket label, and time to close. A single date-ordered 70/30 split keeps
+the final 531 event dates untouched. Preprocessing is learned on training data only;
+model losses are compared with zero revision using paired event-date block bootstraps and
+Benjamini–Hochberg adjustment.
 
-## Repository and data flow
+### Information arrival
+
+A balanced 4,281-contract panel holds sample composition fixed across horizons. Follow-up
+studies stratify calibration by point-in-time liquidity, decompose error reduction by
+season and temperature regime, and compare market revisions with archived ECMWF forecast
+runs and NOAA realized temperatures.
+
+## Data and provenance
+
+Kalshi hourly candles provide bid/ask quotes, trade prices, volume, and open interest.
+Resolutions come from market metadata; the contracts settle against the National Weather
+Service Daily Climate Report for Central Park. The canonical probability is the closing
+YES bid/ask midpoint. Missing two-sided quotes remain missing rather than being replaced
+with trades.
+
+Every API run is immutable and includes retrieval metadata and SHA-256 hashes. Raw,
+interim, and row-level processed data are intentionally excluded from Git because they
+total hundreds of megabytes and can be regenerated. Publication figures and compact
+summary tables are versioned. The archived weather extension is also fetched locally.
 
 ```text
-Kalshi public API
-  -> data/raw/kalshi/KXHIGHNY/<timestamp>/  immutable JSON + manifest
-  -> data/interim/                         canonical Parquet tables
-  -> data/processed/                       forecast and efficiency panels
-  -> reports/tables + reports/figures      reproducible results
+Kalshi API responses + manifest
+  └─ data/raw/
+      └─ normalized markets, outcomes, and candles
+          └─ data/interim/
+              └─ fixed-horizon and efficiency panels
+                  └─ data/processed/
+                      └─ reports/tables/ + reports/figures/
 ```
 
-Research logic lives under `src/pm_efficiency`. Notebooks are intentionally thin consumers of package functions; they are not hidden production pipelines.
+## Repository structure
 
-## Installation
+```text
+config/                 Reproducible sample and model settings
+scripts/                Executable research workflows
+src/pm_efficiency/
+  data/                 API clients, normalization, manifests, validation
+  features/             Leakage-safe horizon and revision panels
+  metrics/              Proper scores, calibration, and inference helpers
+  models/               Chronological prediction and Bayesian extension
+  analysis/             Calibration, efficiency, and mechanism studies
+  visualization/        Shared plotting helpers
+tests/                  Unit and simulation tests, including leakage checks
+reports/                Final reports, compact tables, and figures
+```
+
+## Reproduce the study
 
 Python 3.12 or newer is required.
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev,notebooks]'
-pytest
+python3 -m pip install -e '.[dev]'
+python3 -m pytest -q
 ```
 
-## Reproducible commands
+Run the core pipeline:
 
 ```bash
-# Create a new immutable API snapshot.
+# 1. Fetch a new immutable Kalshi snapshot.
 pm-efficiency fetch
 
-# Normalize the latest snapshot and enforce data contracts.
+# 2. Verify hashes, normalize records, and enforce data contracts.
 pm-efficiency clean
 
-# Build leakage-safe panels.
+# 3. Build canonical snapshots and leakage-safe panels.
 pm-efficiency build
 
-# Write coverage, missingness, distribution, and event probability-sum tables.
-python scripts/descriptive_summary.py
+# 4. Generate descriptive, calibration, and efficiency outputs.
+python3 scripts/descriptive_summary.py
+python3 scripts/calibration_analysis.py
+python3 scripts/efficiency_analysis.py
 
-# Score 24h/12h/6h/1h forecasts and write the reliability diagram.
-python scripts/calibration_analysis.py
+# 5. Generate conditional and information-arrival studies.
+python3 scripts/conditional_studies.py
+python3 scripts/information_source_analysis.py
 
-# Test whether public market features predict paired future revisions.
-python scripts/efficiency_analysis.py
-
-# Run liquidity, information-arrival, and extreme-weather robustness studies.
-python scripts/conditional_studies.py
-
-# Explain the concentration of information arrival between 12h and 6h.
-python scripts/information_source_analysis.py
-
-# Produce both calibration and chronological efficiency outputs.
-pm-efficiency analyze
-
-# Reproduce everything downstream from a particular cached raw run.
-pm-efficiency pipeline --run-dir data/raw/kalshi/KXHIGHNY/<run-id>
+# 6. Fetch/verify archived weather vintages and run the external comparison.
+python3 scripts/weather_information_analysis.py --fetch
 ```
 
-All defaults are in `config/mvp.yaml`. The raw run manifest records retrieval time, source partition, record counts, and SHA-256 hashes. Raw responses are never overwritten.
+For a cached raw run, `pm-efficiency pipeline --run-dir <path>` reproduces the normalized
+data, core panels, calibration tables, and efficiency outputs. `pm-efficiency analyze`
+reruns the two primary analyses without fetching. Defaults are in `config/mvp.yaml`.
 
-## Canonical datasets
+## Reports
 
-- `markets.parquet`: one row per binary temperature bucket, including event, strike, lifecycle timestamps, rules, and settlement metadata.
-- `outcomes.parquet`: explicit binary mapping plus a validity flag for unresolved or exceptional outcomes.
-- `price_history.parquet`: hourly quotes and trades normalized across Kalshi's current and historical response formats.
-- `forecast_panel.parquet`: one row per market at 24, 12, 6, and 1 hour before close.
-- `efficiency_panel.parquet`: hourly trailing features and one-/six-hour future revisions.
-- `market_snapshots.csv`: resolved `KXHIGHNY` hourly snapshots with the canonical public
-  columns requested for downstream research. Its adjacent manifest records the output hash,
-  source retrieval dates, row counts, and missing-price exclusions.
-
-The primary implied probability is the midpoint of the closing YES bid and ask in an hourly candle. A missing two-sided quote remains missing; it is not silently replaced with a last trade. `liquidity_dollars` is nullable because historical point-in-time liquidity cannot be reconstructed safely from candle data.
-
-## Metrics and inference
-
-- Brier score: mean squared probability error.
-- Binary log loss: probabilities clipped to `[1e-6, 1 - 1e-6]`, with clipping disclosed in output methodology.
-- Calibration: fixed-width deciles and expected calibration error (ECE).
-- Uncertainty: complete daily events are resampled in a cluster bootstrap, preserving dependence among mutually exclusive buckets.
-- Efficiency: one date-ordered holdout shared across horizon pairs, with linear and ridge predictions compared against the zero-revision benchmark.
-- Predictive inference: paired circular event-date block bootstraps of model-minus-baseline losses, with all buckets from a day kept together.
-- Multiple tests: Benjamini-Hochberg adjusted p-values.
-
-Fixed-horizon rows use the final quote at or before the target timestamp and reject quotes more than two hours stale. Trailing features are timestamp-aware. Outcomes, post-target candles, and information from later events are never used as predictors.
-
-Raw bucket midpoints are the primary forecasts. Since the buckets within a daily event are mutually exclusive, the pipeline also records their probability sum and a normalized probability. Normalization is a robustness check rather than a replacement for the prices participants actually faced.
-
-## Expected outputs
-
-- Calibration metrics and clustered confidence intervals by horizon
-- Reliability bins and diagram
-- Probability-range bias estimates
-- `efficiency_metrics.csv`: out-of-sample R², RMSE, MAE, sign accuracy, paired loss comparisons, and adjusted p-values
-- `efficiency_coefficients.csv`: training-sample linear and ridge effects
-- `predicted_vs_actual_revisions.png`: chronological test-set predictions by horizon pair
-- `efficiency_report.md`: conservative interpretation, sample audit, and limitations
-
-The notebooks cover data auditing, calibration interpretation, and efficiency interpretation. `reports/final_report.md` is the manuscript skeleton and records the claims that require populated evidence.
-
-The completed March–May 2026 validation run is documented in
-[`reports/pilot_calibration_report.md`](reports/pilot_calibration_report.md), including
-sample coverage, exclusions, clustered confidence intervals, and reproducibility details.
-The maximum-history comparison is documented in
-[`reports/full_history_report.md`](reports/full_history_report.md); current chronological
-results are in [`reports/efficiency_report.md`](reports/efficiency_report.md). Conditional
-results are reported in [`reports/liquidity_report.md`](reports/liquidity_report.md),
-[`reports/information_arrival_report.md`](reports/information_arrival_report.md), and
-[`reports/extreme_weather_report.md`](reports/extreme_weather_report.md).
-The activity, season, temperature-regime, and liquidity mechanism decomposition is in
-[`reports/information_source_report.md`](reports/information_source_report.md).
+- [Consolidated research report](reports/final_report.md)
+- [Full-history and pilot comparison](reports/full_history_report.md)
+- [Chronological efficiency tests](reports/efficiency_report.md)
+- [Information-arrival decomposition](reports/information_arrival_report.md)
+- [Liquidity-stratified calibration](reports/liquidity_report.md)
+- [Extreme-weather robustness](reports/extreme_weather_report.md)
+- [Activity and information-source mechanisms](reports/information_source_report.md)
+- [Archived weather-update comparison](reports/weather_information_source_report.md)
+- [Archived 90-day pilot audit](reports/pilot_calibration_report.md)
 
 ## Limitations
 
-- Temperature buckets inside an event are dependent and should not be treated as independent resolutions.
-- Hourly candles summarize quotes; they are not a complete order-book history.
-- A midpoint is not necessarily executable.
-- Near-close weather prices may reflect observations rather than forecasts.
-- Results from NYC temperature contracts do not automatically generalize to other categories or exchanges.
-- Exchange APIs and archived schemas can change; raw manifests and fixture tests make those changes detectable, not impossible.
+- Contract-level binary scores are not event-level multiclass scores; legacy contract sets
+  are often incomplete and their midpoint sums need not represent exhaustive probability
+  mass.
+- Hourly candles blur within-hour sequencing and omit historical order-book depth.
+- Midpoints are not executable prices; fees, slippage, market impact, and fill uncertainty
+  are outside this study.
+- Near-close coverage is selective, and contract design changes over the sample.
+- ECMWF is an external benchmark, not the exact information set observed by every trader.
+- Results from one weather series do not automatically generalize to other markets.
 
-This is an academic research project, not investment advice.
+## References
 
-## Roadmap
-
-1. Validate a complete `KXHIGHNY` history and publish the first calibration/efficiency report.
-2. Add other city-temperature series through configuration.
-3. Estimate category/horizon/bin Beta priors on training events and evaluate posterior-smoothed probabilities out of sample.
-4. Add richer timestamped order-book depth prospectively.
-5. Only then compare weather with economics, politics, and culture.
-
-## Sources
-
-- [Kalshi public market-data quick start](https://docs.kalshi.com/getting_started/quick_start_market_data)
-- [Kalshi historical-data partitioning](https://docs.kalshi.com/getting_started/historical_data)
-- [Kalshi weather settlement overview](https://help.kalshi.com/markets/popular-markets/weather-markets)
+- [Kalshi market-data quick start](https://docs.kalshi.com/getting_started/quick_start_market_data)
+- [Kalshi historical-data guide](https://docs.kalshi.com/getting_started/historical_data)
+- [Kalshi weather-market overview](https://help.kalshi.com/markets/popular-markets/weather-markets)
+- [Open-Meteo Single Runs API](https://open-meteo.com/en/docs/single-runs-api)
+- [NOAA NCEI Daily Summaries](https://www.ncei.noaa.gov/access/search/data-search/daily-summaries)

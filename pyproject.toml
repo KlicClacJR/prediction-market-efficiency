@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "pm-efficiency"
 version = "0.1.0"
-description = "Research prediction-market calibration, efficiency, and Bayesian information aggregation."
+description = "Research Kalshi weather-market calibration, efficiency, and information aggregation."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -19,12 +19,10 @@ dependencies = [
   "scikit-learn>=1.5",
   "scipy>=1.14",
   "seaborn>=0.13",
-  "statsmodels>=0.14",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.2", "pytest-cov>=5", "ruff>=0.6"]
-notebooks = ["jupyterlab>=4.2"]
 
 [project.scripts]
 pm-efficiency = "pm_efficiency.cli:main"
@@ -42,4 +40,3 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
-

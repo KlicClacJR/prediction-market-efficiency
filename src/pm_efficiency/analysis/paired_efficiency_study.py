@@ -12,7 +12,7 @@ from pm_efficiency.features.revision_pairs import (
     NUMERIC_FEATURES,
     build_paired_revision_panel,
 )
-from pm_efficiency.models.efficiency import adjust_pvalues
+from pm_efficiency.metrics.inference import adjust_pvalues
 from pm_efficiency.models.revision_prediction import (
     ChronologicalSplit,
     chronological_event_split,
@@ -429,7 +429,7 @@ def write_efficiency_report(
         labels = ", ".join(f"{row.model} on {row.pair}" for row in winners.itertuples(index=False))
         conclusion = (
             f"The adjusted predictive comparison identifies {labels}. This is evidence of "
-            "out-of-sample predictability in the pilot, not automatic tradable alpha; prices, "
+            "out-of-sample predictability in this sample, not automatic tradable alpha; prices, "
             "spreads, fees, and execution remain unmodeled."
         )
     lines = [
@@ -444,8 +444,8 @@ def write_efficiency_report(
         f"The first {len(split.train_dates)} event dates ({min(split.train_dates)} through "
         f"{max(split.train_dates)}) form the training sample. The final "
         f"{len(split.test_dates)} dates ({min(split.test_dates)} through "
-        f"{max(split.test_dates)}) form one untouched chronological test set. All six "
-        "contracts from an event remain on the same side of the split.",
+        f"{max(split.test_dates)}) form one untouched chronological test set. All contracts "
+        "from an event remain on the same side of the split.",
         "",
         "Numeric features are median-imputed and standardized using training data only. "
         "Bucket labels are one-hot encoded with rare training labels pooled. Linear and "
@@ -505,7 +505,7 @@ def write_efficiency_report(
         if bool(best["beats_zero_change_5pct"]):
             reading = (
                 f"{best['model']} beats zero under the adjusted primary test, indicating "
-                "pilot predictability that still requires full-history and execution checks."
+                "sample predictability that still requires robustness and execution checks."
             )
         elif best["oos_r2_vs_zero"] > 0:
             reading = (
@@ -559,8 +559,8 @@ def write_efficiency_report(
             f"1. The test set contains the final {len(split.test_dates)} event dates "
             f"({min(split.test_dates)} through {max(split.test_dates)}). It is chronologically "
             "honest, but regime and season composition can still affect external validity.",
-            "2. Weekly event blocks address short-run date dependence only approximately. The "
-            "six mutually exclusive contracts within a day are averaged before resampling.",
+            "2. Weekly event blocks address short-run date dependence only approximately. "
+            "Contracts within a day are averaged before resampling.",
             "3. Bucket labels are high-cardinality and partially unseen chronologically; ridge is "
             "more defensible than unregularized linear coefficients in this sample. Unknown test "
             "labels map to the pooled infrequent category learned from training only.",
@@ -569,16 +569,17 @@ def write_efficiency_report(
             "silently clipped.",
             "5. Hourly candle midpoints are not executable prices. This study tests statistical "
             "revision predictability, not net profitability.",
-            "6. Model and preprocessing choices are fixed for this run but still need seasonal, "
-            "alternate-staleness, and alternate-block-length checks.",
+            "6. Model and preprocessing choices are fixed for this run; alternate-staleness "
+            "and alternate-block-length sensitivity remain useful checks.",
             "",
-            "## Required next checks",
+            "## Interpretation safeguards",
             "",
-            "- Report seasonal subsamples and weekly/monthly block-bootstrap sensitivity.",
-            "- Test predictions against feasible bid/ask execution and fees before discussing "
-            "alpha.",
-            "- Keep any detected relationship framed as predictability unless it survives those "
-            "checks.",
+            "- Seasonal, liquidity, and extreme-weather follow-ups are reported separately and "
+            "do not overturn the full-sample result.",
+            "- Executable bid/ask prices, fees, slippage, and fill uncertainty remain unmodeled; "
+            "the results do not support a claim of tradable alpha.",
+            "- Any future detected relationship should remain framed as predictability unless it "
+            "survives chronological robustness and execution-cost checks.",
             "",
         ]
     )

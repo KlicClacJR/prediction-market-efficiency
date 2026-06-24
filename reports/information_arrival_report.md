@@ -25,7 +25,7 @@ An interval's error reduction is the earlier-horizon loss minus the later-horizo
 
 All three paired intervals have positive confidence intervals, but the dominant information-arrival window is 12h→6h before close. It accounts for about 70% of the total Brier reduction and 69% of the total log-loss reduction. The result is not an artifact of changing contract coverage because the decomposition uses the same 4,281 contracts throughout.
 
-This identifies when forecast errors fall, not why. For NYC daily highs, the 12h→6h interval often overlaps the transition from an overnight forecast to same-day observations and updated weather guidance. Establishing a causal information source would require timestamped meteorological releases and observations.
+This identifies when forecast errors fall, not why. For NYC daily highs, the 12h→6h interval often overlaps the transition from an overnight forecast to same-day observations and updated weather guidance. The later [weather-information study](weather_information_source_report.md) compares this timing with archived ECMWF runs and NOAA observations but does not establish a causal source.
 
 ## Limitations
 
@@ -35,4 +35,4 @@ This identifies when forecast errors fall, not why. For NYC daily highs, the 12h
 - Hourly candles and a two-hour staleness tolerance blur the exact minute of information arrival.
 - The decomposition is an average across seasons and contract vintages; it can conceal heterogeneous arrival patterns.
 
-The underlying tables are `information_arrival_scores.csv` and `information_arrival_decomposition.csv`; the figure is `reports/figures/information_arrival.png`.
+The underlying tables are [information_arrival_scores.csv](tables/information_arrival_scores.csv) and [information_arrival_decomposition.csv](tables/information_arrival_decomposition.csv); the figure is [information_arrival.png](figures/information_arrival.png).

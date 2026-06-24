@@ -286,6 +286,30 @@ def build_forecast_update_event_study(
                     "events": sample.event_id.nunique(),
                 }
             )
+    for metric_index, column in enumerate(("volume_post_minus_pre", "abs_change_post_minus_pre")):
+
+        def large_minus_small(x: pd.DataFrame, col: str = column) -> float:
+            large = x.loc[x.forecast_update_group == "large_update", col].mean()
+            small = x.loc[x.forecast_update_group == "small_update", col].mean()
+            return float(large - small)
+
+        estimate, lower, upper = _cluster_draws(
+            paired[["event_id", "forecast_update_group", column]],
+            large_minus_small,
+            iterations=iterations,
+            seed=seed + 5100 + metric_index,
+        )
+        tests.append(
+            {
+                "analysis": "post_vs_pre_release",
+                "forecast_update_group": "large_minus_small",
+                "metric": column,
+                "estimate": estimate,
+                "ci_lower": lower,
+                "ci_upper": upper,
+                "events": paired.event_id.nunique(),
+            }
+        )
     return timeline, pd.DataFrame(tests)
 
 
@@ -307,6 +331,8 @@ def write_weather_report(
     mae = {
         horizon: weather[f"absolute_forecast_error_{horizon}h_f"].mean() for horizon in (24, 12, 6)
     }
+    forecast_improvement_24_12 = mae[24] - mae[12]
+    forecast_improvement_12_6 = mae[12] - mae[6]
     lines = [
         "# Weather Forecast Updates and the 12h→6h Market Response",
         "",
@@ -331,6 +357,11 @@ def write_weather_report(
         f"| 12h | {mae[12]:.2f}°F |",
         f"| 6h | {mae[6]:.2f}°F |",
         "",
+        f"ECMWF MAE falls by {forecast_improvement_24_12:.2f}°F from 24h→12h and by "
+        f"{forecast_improvement_12_6:.2f}°F from 12h→6h. The external model therefore "
+        "does not show its largest forecast-error improvement in the market's dominant "
+        "12h→6h window.",
+        "",
         "## Market-versus-forecast revisions",
         "",
         "| Interval | Pearson magnitude correlation (95% CI) | Regression slope (95% CI) |",
@@ -345,6 +376,7 @@ def write_weather_report(
         )
     all_volume = release.loc[("all", "volume_post_minus_pre")]
     large_volume = release.loc[("large_update", "volume_post_minus_pre")]
+    volume_dose_response = release.loc[("large_minus_small", "volume_post_minus_pre")]
     all_change = release.loc[("all", "abs_change_post_minus_pre")]
     lines.extend(
         [
@@ -359,10 +391,26 @@ def write_weather_report(
             f"- For top-quartile forecast updates, hourly volume changes by "
             f"{large_volume.estimate:.1f} contracts (95% CI {large_volume.ci_lower:.1f}, "
             f"{large_volume.ci_upper:.1f}).",
+            f"- The large-update post/pre volume change minus the small-update change is "
+            f"{volume_dose_response.estimate:.1f} contracts/hour (95% CI "
+            f"{volume_dose_response.ci_lower:.1f}, {volume_dose_response.ci_upper:.1f}).",
             f"- Mean absolute hourly probability movement changes by {all_change.estimate:.4f} "
             f"(95% CI {all_change.ci_lower:.4f}, {all_change.ci_upper:.4f}).",
             "",
             "## Interpretation",
+            "",
+            "The evidence supports timing alignment but not a forecast-update dose response. "
+            "Market volume and probability movement rise after the assumed 18Z availability "
+            "time, yet large ECMWF updates do not produce a larger volume increase than small "
+            "updates. More importantly, 12h→6h forecast-revision magnitude is negatively, not "
+            "positively, related to same-interval market-revision magnitude. Its positive "
+            "correlation with the earlier 24h→12h market revision is more consistent with the "
+            "market anticipating this benchmark or reacting to other information first.",
+            "",
+            "Accordingly, the archived ECMWF updates do not explain the 70% concentration on "
+            "their own. The clock-time coincidence is real, but the cross-event magnitude tests "
+            "point away from a simple story in which larger 12Z model changes cause larger market "
+            "changes.",
             "",
             "Timing alignment is necessary but not sufficient for causality. A positive same-"
             "interval relationship would show that larger model updates coincide with larger "
@@ -391,6 +439,11 @@ def write_weather_report(
             "- [Open-Meteo Single Runs API](https://open-meteo.com/en/docs/single-runs-api)",
             "- [NOAA NDFD overview](https://vlab.noaa.gov/web/mdl/ndfd)",
             "- [NOAA NCEI Daily Summaries](https://www.ncei.noaa.gov/access/search/data-search/daily-summaries)",
+            "",
+            "Study outputs: [forecast revisions](tables/weather_forecast_revisions.csv), "
+            "[relationship estimates](tables/market_vs_forecast_relationship.csv), "
+            "[update timeline](figures/forecast_update_timeline.png), and "
+            "[market-versus-forecast revisions](figures/market_vs_forecast_revisions.png).",
             "",
         ]
     )

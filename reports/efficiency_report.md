@@ -4,7 +4,7 @@
 
 The null is `E[p_later - p_now | public market information at now] = 0`. Targets pair 24h→12h, 12h→6h, and 6h→1h quotes. Features are timestamped at the now quote; no later-horizon field enters the feature matrix.
 
-The first 1236 event dates (2021-08-06 through 2025-01-04) form the training sample. The final 531 dates (2025-01-05 through 2026-06-19) form one untouched chronological test set. All six contracts from an event remain on the same side of the split.
+The first 1,236 event dates (2021-08-06 through 2025-01-04) form the training sample. The final 531 dates (2025-01-05 through 2026-06-19) form one untouched chronological test set. All contracts from an event remain on the same side of the split.
 
 Numeric features are median-imputed and standardized using training data only. Bucket labels are one-hot encoded with rare training labels pooled. Linear and ridge models are compared with the martingale zero-change forecast. Random forest is run only when its pre-specified independent-event and row thresholds are met.
 
@@ -56,8 +56,8 @@ A positive OOS R² here means lower squared revision error than predicting zero,
 5. Hourly candle midpoints are not executable prices. This study tests statistical revision predictability, not net profitability.
 6. Model and preprocessing choices are fixed for this run but still need seasonal, alternate-staleness, and alternate-block-length checks.
 
-## Required next checks
+## Interpretation safeguards
 
-- Report seasonal subsamples and weekly/monthly block-bootstrap sensitivity.
-- Test predictions against feasible bid/ask execution and fees before discussing alpha.
-- Keep any detected relationship framed as predictability unless it survives those checks.
+- Seasonal, liquidity, and extreme-weather follow-ups are reported separately and do not overturn the full-sample result.
+- Executable bid/ask prices, fees, slippage, and fill uncertainty remain unmodeled; the results do not support a claim of tradable alpha.
+- Any future detected relationship should remain framed as predictability unless it survives chronological robustness and execution-cost checks.
